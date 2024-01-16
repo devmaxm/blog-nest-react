@@ -1,0 +1,15 @@
+.posts_title {
+    width: 100%;
+    display:  block;
+}
+.post_items {
+    width: 100%;
+    display: flex;
+}
+.post_item {
+    padding: 15px 30px;
+    border-bottom: 1px solid rgb(78, 78, 78);
+}
+.post__created_at {
+    margin-left: 20px;
+}

@@ -1,0 +1,13 @@
+/*LOGIN*/
+.auth {
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    height: 100vh;
+}
+
+/*FORM*/
+.auth_form {
+    width: 100%;
+    max-width: 500px;
+}

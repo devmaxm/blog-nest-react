@@ -1,0 +1,16 @@
+.header_container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 15px 30px;
+}
+.header_items {
+    display: flex;
+    list-style: none;
+}
+.header_items .item {
+    margin-left: 20px;
+}
+.header_wrapper {
+    background-color: rgb(221, 221, 221);
+}
