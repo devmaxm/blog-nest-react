@@ -100,9 +100,16 @@ export class AuthService {
   }
 
   async register(userData: RegisterDto): Promise<IAuthResponse> {
-    const isExists = await this.usersService.getOne({ email: userData.email });
-    if (isExists) {
-      throw new BadRequestException();
+    const isExistsEmail = await this.usersService.findOne({
+      email: userData.email,
+    });
+    const isExistsUsername = await this.usersService.findOne({
+      username: userData.username,
+    });
+    if (isExistsEmail || isExistsUsername) {
+      throw new BadRequestException(
+        'User with this email or username already exists.',
+      );
     }
     const data = {
       ...userData,
