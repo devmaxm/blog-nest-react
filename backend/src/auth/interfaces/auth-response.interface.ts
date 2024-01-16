@@ -1,7 +1,7 @@
-import { IUser } from '../../users/interfaces/user.interface';
+import { ISanitizedUser } from '../../users/interfaces/user.interface';
 import { ITokens } from './tokens.interface';
 
 export class IAuthResponse {
-  user: IUser;
+  user: ISanitizedUser;
   tokens: ITokens;
 }

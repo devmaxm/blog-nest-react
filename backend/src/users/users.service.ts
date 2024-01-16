@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { UsersEntity } from './entities/users.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { IUserFindOptions } from './interfaces/user-find-options.interface';
+import { FindUsersDto } from './dtos/find-users.dto';
+import { IPaginatedUsers } from './interfaces/user.interface';
 
 @Injectable()
 export class UsersService {
@@ -13,20 +16,27 @@ export class UsersService {
   ) {}
 
   async create(data: CreateUserDto): Promise<UsersEntity> {
-    const user = new UsersEntity();
-    Object.assign(user, data);
+    const user = this.usersRepository.create({
+      email: data.email,
+      username: data.username,
+      password: data.password,
+    });
     return await this.usersRepository.save(user);
   }
 
-  async getOneClean(
-    where: FindOptionsWhere<UsersEntity>,
-  ): Promise<UsersEntity | null> {
+  async getOneSanitized(where: IUserFindOptions): Promise<UsersEntity> {
+    const user = await this.usersRepository.findOne({ where });
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    return user;
+  }
+
+  async findOneSanitized(where: IUserFindOptions): Promise<UsersEntity> {
     return await this.usersRepository.findOne({ where });
   }
 
-  async getOne(
-    where: FindOptionsWhere<UsersEntity>,
-  ): Promise<UsersEntity | null> {
+  async findOne(where: IUserFindOptions): Promise<UsersEntity | null> {
     return await this.usersRepository.findOne({
       where,
       select: [
@@ -40,18 +50,47 @@ export class UsersService {
     });
   }
 
-  async getAll(): Promise<UsersEntity[]> {
-    return await this.usersRepository.find();
+  async getOne(where: IUserFindOptions): Promise<UsersEntity> {
+    const user = await this.usersRepository.findOne({
+      where,
+      select: [
+        'id',
+        'username',
+        'email',
+        'password',
+        'refreshToken',
+        'createdAt',
+      ],
+    });
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    return user;
+  }
+
+  async getAllPaginated(findParams: FindUsersDto): Promise<IPaginatedUsers> {
+    const page = Number(findParams.page) || 1;
+    const limit = Number(findParams.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const [data, total] = await this.usersRepository.findAndCount({
+      take: limit,
+      skip: offset,
+    });
+    return {
+      data,
+      total,
+      page,
+      perPage: data.length,
+    };
   }
 
   async update(
-    where: FindOptionsWhere<UsersEntity>,
+    where: IUserFindOptions,
     data: UpdateUserDto,
   ): Promise<UsersEntity> {
-    const user = await this.usersRepository.findOneBy(where);
+    const user = await this.usersRepository.findOne({ where });
     Object.assign(user, data);
     return await this.usersRepository.save(user);
   }
-
-  async delete() {}
 }

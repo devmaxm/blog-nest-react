@@ -42,5 +42,5 @@ export class CommentsEntity {
 
   likesCount: number;
 
-  isLiked: boolean
+  isLiked: boolean;
 }

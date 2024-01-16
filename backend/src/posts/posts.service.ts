@@ -1,18 +1,20 @@
 import {
-  HttpException,
-  HttpStatus,
   Inject,
   Injectable,
+  NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PostsEntity } from './entities/posts.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UsersService } from '../users/users.service';
 import { CreatePostDto } from './dtos/create-post.dto';
 import { UpdatePostDto } from './dtos/update-post.dto';
 import { CommentsService } from '../comments/comments.service';
-import { IUser } from '../users/interfaces/user.interface';
+import { ISanitizedUser } from '../users/interfaces/user.interface';
+import { IPostFindOptions } from './interfaces/post-find-options.interface';
+import { FindPostDto } from './dtos/find-post.dto';
+import { IPaginatedPosts } from './interfaces/post.interface';
 
 @Injectable()
 export class PostsService {
@@ -27,9 +29,9 @@ export class PostsService {
   ) {}
 
   async create(authorId: number, data: CreatePostDto): Promise<PostsEntity> {
-    const author = await this.usersService.getOneClean({ id: authorId });
+    const author = await this.usersService.getOneSanitized({ id: authorId });
     if (!author) {
-      throw new HttpException('User not found.', HttpStatus.NOT_FOUND);
+      throw new NotFoundException('User not found.');
     }
     const newPost = new PostsEntity();
     Object.assign(newPost, data);
@@ -37,12 +39,19 @@ export class PostsService {
     return await this.postsRepository.save(newPost);
   }
 
-  async getOne(where: FindOptionsWhere<PostsEntity>): Promise<PostsEntity | null> {
-    return await this.postsRepository.findOne({where, relations: ['author']})
+  async getOne(where: IPostFindOptions): Promise<PostsEntity> {
+    const post = await this.postsRepository.findOne({
+      where,
+      relations: ['author'],
+    });
+    if (!post) {
+      throw new NotFoundException('Post not found.');
+    }
+    return post;
   }
   async getOneDetails(
-    where: FindOptionsWhere<PostsEntity>,
-    currentUser: IUser
+    where: IPostFindOptions,
+    currentUser: ISanitizedUser,
   ): Promise<PostsEntity | null> {
     const post = await this.postsRepository
       .createQueryBuilder('post')
@@ -51,26 +60,38 @@ export class PostsService {
       .leftJoinAndSelect('post.author', 'author')
       .loadRelationCountAndMap('post.likesCount', 'post.likes')
       .getOne();
-
+    if (!post) {
+      throw new NotFoundException('Post not found.');
+    }
     const comments = await this.commentsService.getAll(post.id, currentUser.id);
     post.comments = comments;
     return post;
   }
 
-  async getAll(): Promise<PostsEntity[]> {
-    return await this.postsRepository.find({
+  async getAll(findParams?: FindPostDto): Promise<IPaginatedPosts> {
+    const page = Number(findParams.page) || 1;
+    const limit = Number(findParams.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const [data, total] = await this.postsRepository.findAndCount({
       relations: ['author'],
+      take: limit,
+      skip: offset,
     });
+
+    return {
+      data,
+      total,
+      page,
+      perPage: data.length,
+    };
   }
 
   async update(
-    postId: number,
+    where: IPostFindOptions,
     data: UpdatePostDto,
-  ): Promise<PostsEntity | null> {
-    const post = await this.getOne({ id: postId });
-    if (!post) {
-      return null;
-    }
+  ): Promise<PostsEntity> {
+    const post = await this.postsRepository.findOne({ where });
     Object.assign(post, data);
     return await this.postsRepository.save(post);
   }
