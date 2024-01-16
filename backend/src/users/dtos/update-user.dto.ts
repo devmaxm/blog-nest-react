@@ -1,8 +1,11 @@
 import { PartialType } from '@nestjs/swagger';
 import { CreateUserDto } from './create-user.dto';
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
+
+export class UpdateUserBodyDto extends PartialType(CreateUserDto) {}
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsString()
-  refreshToken: string;
+  @IsOptional()
+  refreshToken?: string;
 }
