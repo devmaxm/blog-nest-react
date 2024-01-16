@@ -71,9 +71,7 @@ export class CommentsControllerV1 {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment) {
-      throw new NotFoundException('Comment not found.');
-    }
+    
     if (comment.author.id != currentUser.id) {
       throw new ForbiddenException("You can't update this comment.");
     }
@@ -89,9 +87,7 @@ export class CommentsControllerV1 {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment) {
-      throw new NotFoundException('Comment not found.');
-    }
+
     if (comment.author.id != currentUser.id) {
       throw new ForbiddenException(`You can't delete this comment.`);
     }
@@ -108,9 +104,7 @@ export class CommentsControllerV1 {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment) {
-      throw new NotFoundException('Comment not found.');
-    }
+
     if (comment.author.id == currentUser.id) {
       throw new ConflictException(`You can't like your own comment.`);
     }
@@ -141,9 +135,6 @@ export class CommentsControllerV1 {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment) {
-      throw new NotFoundException('Comment not found.');
-    }
 
     const isLiked = await this.likesService.findOne({
       userId: currentUser.id,
@@ -155,7 +146,7 @@ export class CommentsControllerV1 {
 
     await this.likesService.removeLike({
       userId: currentUser.id,
-      comment: { id: Number(commentId) },
+      comment: { id: comment.id },
     });
 
     return { message: 'Like was deleted.' };
