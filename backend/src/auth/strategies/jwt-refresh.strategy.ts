@@ -1,6 +1,6 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
@@ -34,7 +34,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       id: payload.id,
     });
     if (!user || !refreshToken) {
-      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+      throw new UnauthorizedException();
     }
     const compareTokens = await bcrypt.compare(
       requestRefreshToken,
@@ -42,7 +42,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     );
 
     if (!compareTokens) {
-      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+      throw new UnauthorizedException();
     }
     return user;
   }

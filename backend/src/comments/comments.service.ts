@@ -1,11 +1,17 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { CreateCommentDto } from './dtos/create-comment.dto';
 import { CommentsEntity } from './entities/comments.entity';
 import { PostsService } from '../posts/posts.service';
 import { UsersService } from '../users/users.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, TreeRepository } from 'typeorm';
+import { TreeRepository } from 'typeorm';
 import { UpdateCommentDto } from './dtos/update-comment.dto';
+import { ICommentFindOptions } from './interfaces/comment-find-options.interface';
 
 @Injectable()
 export class CommentsService {
@@ -16,7 +22,7 @@ export class CommentsService {
     @Inject(forwardRef(() => PostsService))
     private readonly postsService: PostsService,
     private readonly usersService: UsersService,
-  ) { }
+  ) {}
 
   async create(
     postId: number,
@@ -25,7 +31,7 @@ export class CommentsService {
   ): Promise<CommentsEntity> {
     const { parentId, ...commentData } = dto;
     const post = await this.postsService.getOne({ id: postId });
-    const author = await this.usersService.getOneClean({ id: authorId });
+    const author = await this.usersService.getOneSanitized({ id: authorId });
     const newComment = new CommentsEntity();
     Object.assign(newComment, commentData);
     newComment.post = post;
@@ -37,25 +43,30 @@ export class CommentsService {
       });
       newComment.parent = parent;
     }
-    const comment = await this.commentsRepository.save(newComment)
-    delete comment.post
+    const comment = await this.commentsRepository.save(newComment);
+    delete comment.post;
     if (comment.parent) {
-      delete comment.parent.body
-      delete comment.parent.createdAt
+      delete comment.parent.body;
+      delete comment.parent.createdAt;
     }
-    return { ...comment, likesCount: 0 }
+    return { ...comment, likesCount: 0 };
   }
 
-  async getOne(
-    where: FindOptionsWhere<CommentsEntity>,
-  ): Promise<CommentsEntity | null> {
-    return await this.commentsRepository.findOne({
+  async getOne(where: ICommentFindOptions): Promise<CommentsEntity> {
+    const comment = await this.commentsRepository.findOne({
       where,
       relations: ['author'],
     });
+    if (!comment) {
+      throw new NotFoundException('Comment not found.');
+    }
+    return comment;
   }
 
-  async getAll(postId: number, currentUserId: number): Promise<CommentsEntity[]> {
+  async getAll(
+    postId: number,
+    currentUserId: number,
+  ): Promise<CommentsEntity[]> {
     const comments = await this.commentsRepository
       .createQueryBuilder('comment')
       .select([
@@ -64,22 +75,25 @@ export class CommentsService {
         'comment.createdAt',
         'author.id',
         'parent.id',
-        'author.username'
+        'author.username',
       ])
       .leftJoin('comment.author', 'author')
       .leftJoin('comment.parent', 'parent')
       .loadRelationCountAndMap('comment.likesCount', 'comment.likes')
-      .leftJoinAndSelect('comment.likes', 'like', 'like.userId = :userId', { userId: currentUserId })
+      .leftJoinAndSelect('comment.likes', 'like', 'like.userId = :userId', {
+        userId: currentUserId,
+      })
       .where('comment.postId = :postId', { postId })
       .groupBy('comment.id, author.id, like.id, parent.id')
       .getMany();
 
-      for (const comment of comments) {
-        const isLiked = comment.likes && comment.likes.some((like) => like.userId === currentUserId);
-        console.log(comment)
-        comment.isLiked = isLiked || false;
-        delete comment.likes
-      }
+    for (const comment of comments) {
+      const isLiked =
+        comment.likes &&
+        comment.likes.some((like) => like.userId === currentUserId);
+      comment.isLiked = isLiked || false;
+      delete comment.likes;
+    }
 
     return this.buildTree(comments);
   }

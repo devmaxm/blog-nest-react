@@ -2,19 +2,19 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
-  HttpException,
-  HttpStatus,
+  NotFoundException,
+  ForbiddenException,
   Param,
   Post,
   Put,
   UseGuards,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateCommentDto } from '../dtos/create-comment.dto';
 import { CommentsService } from '../comments.service';
 import { JwtAccessGuard } from '../../auth/guards/jwt-access.guard';
 import { User } from '../../users/decorators/user.decorator';
-import { IUser } from '../../users/interfaces/user.interface';
+import { ISanitizedUser } from '../../users/interfaces/user.interface';
 import { PostsService } from '../../posts/posts.service';
 import { CommentsEntity } from '../entities/comments.entity';
 import { UpdateCommentDto } from '../dtos/update-comment.dto';
@@ -29,27 +29,25 @@ export class CommentsControllerV1 {
     private readonly postsService: PostsService,
     private readonly likesService: LikesService,
     private readonly notificationsService: NotificationsService,
-  ) { }
+  ) {}
 
   @UseGuards(JwtAccessGuard)
   @Post()
   async create(
     @Param('postId') postId: string,
     @Body() dto: CreateCommentDto,
-    @User() currentUser: IUser,
+    @User() currentUser: ISanitizedUser,
   ) {
     let parent: CommentsEntity;
 
     const post = await this.postsService.getOne({ id: Number(postId) });
-    if (!post) throw new HttpException('Post not found.', HttpStatus.NOT_FOUND);
 
     if (dto.parentId) {
       parent = await this.commentsService.getOne({ id: dto.parentId });
-      if (!parent)
-        throw new HttpException('Comment not found.', HttpStatus.NOT_FOUND);
+      if (!parent) throw new NotFoundException('Comment not found.');
     }
     const comment = await this.commentsService.create(
-      Number(postId),
+      post.id,
       currentUser.id,
       dto,
     );
@@ -60,7 +58,7 @@ export class CommentsControllerV1 {
       );
     }
 
-    return {...comment, children: []};
+    return { ...comment, children: [] };
   }
 
   @UseGuards(JwtAccessGuard)
@@ -68,18 +66,15 @@ export class CommentsControllerV1 {
   async update(
     @Param('commentId') commentId: string,
     @Body() dto: UpdateCommentDto,
-    @User() currentUser: IUser,
+    @User() currentUser: ISanitizedUser,
   ) {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment)
-      throw new HttpException('Comment not found.', HttpStatus.NOT_FOUND);
-    if (comment.author.id != currentUser.id)
-      throw new HttpException(
-        `You can't update this comment.`,
-        HttpStatus.FORBIDDEN,
-      );
+    
+    if (comment.author.id != currentUser.id) {
+      throw new ForbiddenException("You can't update this comment.");
+    }
     return await this.commentsService.update(Number(commentId), dto);
   }
 
@@ -87,18 +82,15 @@ export class CommentsControllerV1 {
   @Delete(':commentId')
   async delete(
     @Param('commentId') commentId: string,
-    @User() currentUser: IUser,
+    @User() currentUser: ISanitizedUser,
   ) {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment)
-      throw new HttpException('Comment not found.', HttpStatus.NOT_FOUND);
-    if (comment.author.id != currentUser.id)
-      throw new HttpException(
-        `You can't delete this comment.`,
-        HttpStatus.FORBIDDEN,
-      );
+
+    if (comment.author.id != currentUser.id) {
+      throw new ForbiddenException(`You can't delete this comment.`);
+    }
     await this.commentsService.delete(Number(commentId));
     return { message: `Comment ${commentId} was successful deleted.` };
   }
@@ -107,27 +99,22 @@ export class CommentsControllerV1 {
   @Post(':commentId/like')
   async likeComment(
     @Param('commentId') commentId: string,
-    @User() currentUser: IUser,
+    @User() currentUser: ISanitizedUser,
   ) {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment)
-      throw new HttpException('Comment not found.', HttpStatus.NOT_FOUND);
-    if (comment.author.id == currentUser.id)
-      throw new HttpException(
-        `You can't like your own comment.`,
-        HttpStatus.CONFLICT,
-      );
-    const isLiked = await this.likesService.getOne({
+
+    if (comment.author.id == currentUser.id) {
+      throw new ConflictException(`You can't like your own comment.`);
+    }
+    const isLiked = await this.likesService.findOne({
       userId: currentUser.id,
       comment: { id: Number(commentId) },
     });
-    if (isLiked)
-      throw new HttpException(
-        'You have already liked this comment.',
-        HttpStatus.CONFLICT,
-      );
+    if (isLiked) {
+      throw new ConflictException('You have already liked this comment.');
+    }
     const like = await this.likesService.likeComment(
       currentUser.id,
       comment.id,
@@ -143,26 +130,25 @@ export class CommentsControllerV1 {
   @Delete(':commentId/like')
   async removeCommentLike(
     @Param('commentId') commentId: string,
-    @User() currentUser: IUser,
+    @User() currentUser: ISanitizedUser,
   ): Promise<IDeleteResponse> {
     const comment = await this.commentsService.getOne({
       id: Number(commentId),
     });
-    if (!comment)
-      throw new HttpException('Comment not found.', HttpStatus.NOT_FOUND);
-    const isLiked = await this.likesService.getOne({
+
+    const isLiked = await this.likesService.findOne({
       userId: currentUser.id,
       comment: { id: Number(commentId) },
     });
-    if (!isLiked)
-      throw new HttpException(
-        `You haven't liked this comment.`,
-        HttpStatus.CONFLICT,
-      );
+    if (!isLiked) {
+      throw new ConflictException(`You haven't liked this comment.`);
+    }
+
     await this.likesService.removeLike({
       userId: currentUser.id,
-      comment: { id: Number(commentId) },
+      comment: { id: comment.id },
     });
+
     return { message: 'Like was deleted.' };
   }
 }

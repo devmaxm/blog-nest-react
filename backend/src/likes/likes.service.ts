@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, Repository } from 'typeorm';
 import { LikesEntity } from './entites/likes.entity';
@@ -15,7 +15,7 @@ export class LikesService {
     private readonly postsService: PostsService,
   ) {}
 
-  async getOne(
+  async findOne(
     where: FindOptionsWhere<LikesEntity>,
   ): Promise<LikesEntity | null> {
     return await this.likesRepository.findOne({ where });
@@ -42,10 +42,10 @@ export class LikesService {
   }
 
   async removeLike(where: FindOptionsWhere<LikesEntity>) {
-    const like = await this.likesRepository.findOne({where})
+    const like = await this.likesRepository.findOne({ where });
     if (!like) {
-      throw new HttpException('Like not found.', HttpStatus.BAD_REQUEST)
+      throw new NotFoundException('Like not found.');
     }
-    await this.likesRepository.delete(like.id)
+    await this.likesRepository.delete(like.id);
   }
 }
