@@ -21,7 +21,7 @@ export class NotificationsService {
   async getAll(userId: number) {
     return this.notificationRepository.find({
       where: { recipient: { id: userId } },
-      relations: ['post', 'comment'],
+      relations: ['post', 'comment', 'comment.post'],
       order: { createdAt: 'DESC' },
     });
   }

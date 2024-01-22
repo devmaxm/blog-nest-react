@@ -28,6 +28,9 @@ export function Header() {
           {isAuth && <div>
             <ul className={styles.header_items}>
               <li className={styles.item}>
+                <Link to='/notifications'>Notifications</Link>
+              </li>
+              <li className={styles.item}>
                 <p onClick={handleLogout} className='link'>Logout</p>
               </li>
             </ul>

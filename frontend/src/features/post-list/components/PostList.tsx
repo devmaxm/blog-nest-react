@@ -24,7 +24,7 @@ export function PostList() {
       <h1 className={styles.posts_title}>Posts</h1>
       <Grid container className={styles.post_items}>
         {!postList && <p>Posts not found.</p>}
-        {postList && postList.map(post => <PostItem key={post.id} post={post}/>)}
+        {postList && postList.data.map(post => <PostItem key={post.id} post={post}/>)}
       </Grid>
     </Grid>
   );

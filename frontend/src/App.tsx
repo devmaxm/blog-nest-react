@@ -14,26 +14,27 @@ import { PostList } from "./features/post-list/components/PostList";
 import { PostDetail } from "./features/post-detail/components/PostDetail";
 import { PostAdd } from "./features/post-add/components/PostAdd";
 import AuthComponent from "./features/auth/hoc/AuthComponent";
+import { Notifications } from "./pages/Notifications";
+import { AllNotifications } from "./features/notifications/components/AllNotifications";
 
 function App() {
-  const dispatch = useAppDispatch()
+  const dispatch = useAppDispatch();
   useEffect(() => {
-      const token = localStorage.getItem('refreshToken')
+    const token = localStorage.getItem("refreshToken");
+    if (token) {
+      dispatch(refreshTokensThunk());
+    }
+
+    const tokenRefreshInterval = setInterval(() => {
       if (token) {
-          dispatch(refreshTokensThunk())
+        dispatch(refreshTokensThunk());
       }
+    }, 1000 * 60 * 12);
 
-      const tokenRefreshInterval = setInterval(() => {
-          if (token) {
-              dispatch(refreshTokensThunk())
-          }
-      }, 1000 * 60 * 12);
-
-      return () => {
-          clearInterval(tokenRefreshInterval);
-      };
-
-  }, [dispatch])
+    return () => {
+      clearInterval(tokenRefreshInterval);
+    };
+  }, [dispatch]);
 
   return (
     <div className="App">
@@ -45,10 +46,23 @@ function App() {
             <Route path="register" element={<RegisterForm />} />
           </Route>
 
-          <Route path={"/"} element={<Posts />} >
-            <Route path="" element={<PostList />}/>
-            <Route path="/posts/add" element={<AuthComponent children={<PostAdd />}/>}/>
-            <Route path="/posts/:id" element={<AuthComponent children={<PostDetail />}/>}/>
+          <Route path="/" element={<Posts />}>
+            <Route path="" element={<PostList />} />
+            <Route
+              path="/posts/add"
+              element={<AuthComponent children={<PostAdd />} />}
+            />
+            <Route
+              path="/posts/:id"
+              element={<AuthComponent children={<PostDetail />} />}
+            />
+          </Route>
+
+          <Route
+            path="/notifications"
+            element={<AuthComponent children={<Notifications />} />}
+          >   
+            <Route path="" element={<AllNotifications />}/>
           </Route>
         </Routes>
       </BrowserRouter>

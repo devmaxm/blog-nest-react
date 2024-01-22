@@ -6,6 +6,7 @@ export interface IComment {
     createdAt: string;
     likesCount: number;
     isLiked: boolean;
+    post: IPost
     parent: ICommentParent | null 
     author: ICleanUser;
     children: IComment[]

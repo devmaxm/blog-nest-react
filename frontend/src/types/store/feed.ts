@@ -1,9 +1,10 @@
+import { PaginatedResponse } from "../general/paginated-response";
 import { IPost } from "../general/post";
 
 export interface IFeedState {
-    postList: IPost[] | null
+    postList: PaginatedResponse<IPost> | null
     fetching: 'pending' | 'succeeded',
     error: string
 }
 
-export type TFeedResponse = IPost[]
+export type TFeedResponse = PaginatedResponse<IPost>

@@ -86,7 +86,6 @@ const postSlice = createSlice({
             // Create Comment
             .addCase(createCommentThunk.fulfilled, (state, action) => {
                 const comment = action.payload
-                console.log(comment)
                 if (state.post) {
                     if (comment.parent) {
                         const parent = findCommentById(comment.parent.id, state.post.comments)
